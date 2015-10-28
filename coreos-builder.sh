@@ -356,18 +356,18 @@ MENU TITLE "CoreOS Live Boot Menu"
 MENU WIDTH              78
 MENU MARGIN             4
 MENU ROWS               6
-MENU VSHIFT             3
+MENU VSHIFT             5
 MENU TABMSGROW          16
 MENU CMDLINEROW         16
-MENU HELPMSGROW         18
+MENU HELPMSGROW         22
 MENU HELPMSGENDROW      29
 
 MENU BACKGROUND ${SYSLINUX_BACKGROUND}
 
-MENU COLOR border       30;44   #40ffffff #a0000000 std
-MENU COLOR title        1;36;44 #9033ccff #a0000000 std
+MENU COLOR border       37;44   #40ffffff #a0000000 std
+MENU COLOR title        1;37;44 #9033ccff #a0000000 std
 MENU COLOR sel          7;37;40 #e0ffffff #20ffffff all
-MENU COLOR unsel        37;44   #50ffffff #a0000000 std
+MENU COLOR unsel        37;40   #50ffffff #a0000000 std
 MENU COLOR help         37;40   #c0ffffff #a0000000 std
 MENU COLOR timeout_msg  37;40   #80ffffff #00000000 std
 MENU COLOR timeout      1;37;40 #c0ffffff #00000000 std
@@ -474,7 +474,8 @@ parepare_cloudconfig() {
         echo "  done"
 
     popd >> /dev/null
-    # rm -rf ${destin}/coreos/usr
+
+    rm -rf ${destin}/coreos/usr
 
 }
 
