@@ -11,20 +11,20 @@ Default is to create a ISO image which can be dumped into a USB device or burned
 ```
 Usage: $0 [-V version] [-D /dev/device]
 Options:
-    -C CHANNEL          Release channel to use (e.g. beta, alpha, stable) [default: ${COREOS_CHANNEL_ID}]
-    -V VERSION_ID       Version to install (e.g. current) [default: ${COREOS_VERSION_ID}]
+    -C CHANNEL          Release channel to use (e.g. beta, alpha, stable) [default: stable ]
+    -V VERSION_ID       Version to install (e.g. current) [default: current ]
 
     -b                  Build CoreOS ISO image, (default)
     -i                  Install CoreOS to the given VFAT partition, work with -D argument
     -d DEVICE/file.iso  Install CoreOS to a VFAT partition (e.g. /dev/sda1), or build the CoreOS ISO image
-                        with given name,  [default: ${SCRIPT_DIR}/coreos_production_<VERSION>.iso]
-    -L label            Volume Lable be use for output ISO or VFAT partition. [default: ${COREOS_VOL_LABEL}]
+                        with given name,  [default:coreos_production_<VERSION>.iso]
+    -L label            Volume Lable be use for output ISO or VFAT partition. [default: COREOS ]
     -R label            local overlay storage for the writable root filesystem while continuing to boot 
-                        (e.g. /dev/sda2 or LABEL=ROOT). [default: ${COREOS_ROOTFS_LABEL}]
+                        (e.g. /dev/sda2 or LABEL=ROOT). [default: ROOT]
 
     -a                  Enable coreos.autologin on boot
-    -u cloud-config.yml Insert a cloud-init config to be executed on boot. [default: ${COREOS_CLOUD_CONFIG}]
-    -o oem-config.yml   OEM config / packages (*.tar.gz) to install (to /usr/share/oem) [default: ${COREOS_OEM_CONFIG}]
+    -u cloud-config.yml Insert a cloud-init config to be executed on boot. [default: cloud-config.yml]
+    -o oem-config.yml   OEM config to build (to /usr/share/oem) [default: oem-config.yml ]
     -U URL              URL for cloud-config to be executed on boot.
 
     -h                  Show myself ;-)
