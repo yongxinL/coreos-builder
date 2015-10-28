@@ -1,0 +1,157 @@
+#cloud-config
+# refer to https://github.com/coreos/coreos-cloudinit
+
+hostname: captainl
+
+users: 
+    - name: "georgel"
+      passwd: "$6$SALT$yB3J2QbOZounh/Y6MIco7jOYJlJR1y5C04arNVfSmPp27YYFWRTQbf1Iu7Yge1LY1gl4FrfPnDG25bQhU5y7g1"
+      groups: 
+        - sudo
+        - docker
+        - core
+        - wheel
+
+write_files:
+    - path: /etc/systemd/network/static.network
+      permissions: 0644
+      content: |
+        [Match]
+        Name=em1
+
+        [Network]
+        DNS=8.8.8.8
+        Address=10.20.30.1/17
+        Gateway=10.20.30.254
+
+    - path: /etc/iptables.rules
+      permissions: 0644
+      content: |
+        *filter
+        :INPUT DROP [0:0]
+        :FORWARD ACCEPT [0:0]
+        :OUTPUT ACCEPT [76:7696]
+        -A INPUT -p tcp -m conntrack --ctstate NEW -m multiport --dports 22 -j ACCEPT
+        -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+        -A INPUT -i lo -j ACCEPT
+        -A INPUT -p icmp --icmp-type 8 -m state --state NEW,RELATED,ESTABLISHED -j ACCEPT
+        -A INPUT -p icmp --icmp-type echo-reply -j ACCEPT
+        COMMIT
+
+# Network configuration with networkd
+# Note: The IP static configuration will not work because your MAC does not
+# match with this one!!
+coreos:
+    # etcd2:
+        # generate a new token for each unique cluster from https://discovery.etcd.io/new?size=3
+        # specify the initial size of your cluster with ?size=X
+        # discovery: https://discovery.etcd.io/<token>
+        # multi-region and multi-cloud deployments need to use $public_ipv4
+        # advertise-client-urls: http://$private_ipv4:2379,http://$private_ipv4:4001
+        # initial-advertise-peer-urls: http://$private_ipv4:2380
+        # listen on both the official ports and the legacy ports
+        # legacy ports can be omitted if your application doesn't depend on them
+        # listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
+        # listen-peer-urls: http://$private_ipv4:2380
+
+    units:
+        - name: etcd2.service
+          command: start
+        - name: fleet.service
+          command: start
+
+        # VMware tools service
+        - name: vmtoolsd.service
+          command: start
+          content: |
+            [Unit]
+            Description=VMware Tools Agent
+            Documentation=http://open-vm-tools.sourceforge.net/
+            ConditionVirtualization=vmware
+
+            [Service]
+            ExecStartPre=/usr/bin/ln -sfT /usr/share/oem/vmware-tools /etc/vmware-tools
+            ExecStart=/usr/share/oem/bin/vmtoolsd
+            TimeoutStopSec=5
+
+        # restart network service with specified config file
+        - name: systemd-networkd.service
+          command: restart
+          content: |
+            [Unit]
+            Description=restarting network service
+            After=coreos-setup-environment.service
+
+        - name: iptables.service
+          command: start
+          content: |
+            [Unit]
+            Description=iptables
+            Author=Me
+            After=systemd-networkd.service
+
+            [Service]
+            Type=oneshot
+            ExecStart=/usr/sbin/iptables-restore /etc/iptables.rules
+            ExecReload=/usr/sbin/iptables-restore /etc/iptables.rules
+            ExecStop=/usr/sbin/iptables-restore /etc/iptables.rules
+
+        # Mounting Storage
+        # Cloud-config writes mount unit files beneath /etc/systemd/system. Systemd mounts filesystems
+        # in such units at boot time. mount unit names derive from the target mount point. with interior 
+        # slasher replaced by dashes. a unit mounting onto /var/www is thus named var-www.mount
+        #- name: media-ephemeral.mount
+        #  command: start
+        #  content: |
+        #    [Mount]
+        #    What=/dev/xvdb
+        #    Where=/media/ephemeral
+        #    Type=ext4
+
+        # Use Attached Storage for Docker
+        # 
+        #- name: format-ephemeral.service
+        #  command: start
+        #  content: |
+        #    [Unit]
+        #    Description=Formats the ephemeral drive
+        #    After=dev-xvdb.device
+        #    Requires=dev-xvdb.device
+        #    [Service]
+        #    Type=oneshot
+        #    RemainAfterExit=yes
+        #    ExecStart=/usr/sbin/wipefs -f /dev/xvdb
+        #    ExecStart=/usr/sbin/mkfs.ext4 -f /dev/xvdb
+        #- name: var-lib-docker.mount
+        #  command: start
+        #  content: |
+        #    [Unit]
+        #    Description=Mount ephemeral to /var/lib/docker
+        #    Requires=format-ephemeral.service
+        #    After=format-ephemeral.service
+        #    Before=docker.service
+        #    [Mount]
+        #    What=/dev/xvdb
+        #    Where=/var/lib/docker
+        #    Type=ext4
+
+        # The cloud-config except enables the NFS host monitor rpc.statd(8), then mounts
+        # an NFS export onto the CoreOS node
+        #- name: rpc-statd.service
+        #  command: start
+        #  enable: true
+        #- name: var-www.mount
+        #  command: start
+        #  content: |
+        #    [Mount]
+        #    What=nfs.example.com:/var/www
+        #    Where=/var/www
+        #    Type=nfs
+
+        # To declare that another service depends on this mount, name the mount unit
+        # in the dependent unit's After and Requires properties:
+        # If the mount fails, dependent units will not start.
+        #[Unit]
+        #After=var-www.mount
+        #Requires=var-www.mount
+
