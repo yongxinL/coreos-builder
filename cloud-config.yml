@@ -1,7 +1,7 @@
 #cloud-config
 # refer to https://github.com/coreos/coreos-cloudinit
 
-hostname: captainl
+hostname: corestack
 
 users: 
     - name: "georgel"
@@ -13,7 +13,31 @@ users:
         - wheel
 
 coreos:
+    etcd2:
+        # Configuration for etcd Server role
+        # Reference to https://coreos.com/os/docs/latest/cluster-architectures.html
+        name: etcdserver
+        initial-cluster: etcdserver=http://1.0.0.5:2380
+        initial-advertise-peer-urls: http://1.0.0.5:2380
+        advertise-client-urls: http://1.0.0.5:2379
+        # listen on both the official ports and the legacy ports
+        # legacy ports can be omitted if your application doesn't depend on them
+        listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
+        listen-peer-urls: http://0.0.0.0:2380
+
+        # Configuration for Worker role
+        proxy: on 
+        listen-client-urls: http://localhost:2379
+        initial-cluster: etcdserver=http://1.0.0.5:2380
+    fleet:
+        etcd_servers: "http://localhost:2379"
+
     units:
+        - name: etcd2.service
+          command: start
+        - name: fleet.service
+          command: start
+
         # Network configuration with networkd
         # Note: The IP static configuration will not work because your MAC does not
         # match with this one!!
