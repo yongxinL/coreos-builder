@@ -1,9 +1,11 @@
 #cloud-config
 # refer to https://github.com/coreos/coreos-cloudinit
 
-hostname: corestack
+hostname: captainl
 
-users: 
+users:
+    # generate password hash by python
+    # python -c "import crypt, getpass, pwd; print crypt.crypt('password', '\$6\$SALT\$')"
     - name: "georgel"
       passwd: "$6$SALT$yB3J2QbOZounh/Y6MIco7jOYJlJR1y5C04arNVfSmPp27YYFWRTQbf1Iu7Yge1LY1gl4FrfPnDG25bQhU5y7g1"
       groups: 
@@ -12,31 +14,71 @@ users:
         - core
         - wheel
 
+# In some case, two IPs be assign to a network card.
+write_files:
+    - path: /etc/systemd/network/00-static.network
+      permissions: 0644
+      content: |
+        [Match]
+        MACAddress=00:00:00:00:00:01
+
+        [Network]
+        DNS=8.8.8.8
+        Address=1.0.0.5/17
+        Gateway=1.0.0.2
+        DHCP=no
+
+    - path: /etc/systemd/network/01-static.network
+      permissions: 0644
+      content: |
+        [Match]
+        MACAddress=00:00:00:00:00:02
+
+        [Network]
+        Address=172.16.0.101/24
+        DHCP=no
+
 coreos:
+    # Below etcd2 configurate is for Small cluster, for rest of deplooyment type, 
+    # please refer to https://coreos.com/os/docs/latest/cluster-architectures.html
+
+    # Configuration for etcd Role
+    # If you have problem with cluster and need to CLEAN current configuration
+    # sudo systemctl stop etcd2
+    # rm -rf /var/lib/etcd2/*
+    # sudo systemctl start etcd2
     etcd2:
-        # Configuration for etcd Server role
-        # Reference to https://coreos.com/os/docs/latest/cluster-architectures.html
         name: etcdserver
-        initial-cluster: etcdserver=http://1.0.0.5:2380
-        initial-advertise-peer-urls: http://1.0.0.5:2380
-        advertise-client-urls: http://1.0.0.5:2379
-        # listen on both the official ports and the legacy ports
-        # legacy ports can be omitted if your application doesn't depend on them
+        initial-cluster: etcdserver=http://127.0.0.1:2380
+        initial-advertise-peer-urls: http://127.0.0.1:2380
+        advertise-client-urls: http://127.0.0.1:2379
         listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
         listen-peer-urls: http://0.0.0.0:2380
+    # End of Configuration
 
-        # Configuration for Worker role
-        proxy: on 
-        listen-client-urls: http://localhost:2379
-        initial-cluster: etcdserver=http://1.0.0.5:2380
-    fleet:
-        etcd_servers: "http://localhost:2379"
+    # Configuration for Worker Role
+    # Please uncommit it when on the Worker machine.
+    # Location of configuration file in Worker role : /var/lib/etcd2/proxy/cluster
+    # etcd2:
+        # proxy: on 
+        # listen-client-urls: http://localhost:2379
+        # initial-cluster: etcdserver=http://172.29.237.101:2380
+    # fleet:
+        # etcd_servers: "http://localhost:2379"
+    # End of Configuration
 
     units:
         - name: etcd2.service
           command: start
         - name: fleet.service
           command: start
+        - name: flanneld.service
+            drop-ins:
+            - name: 50-network-config.conf
+                content: |
+                [Service]
+                ExecStartPre=/usr/bin/etcdctl set /coreos.com/network/config '{ "Network": "1.0.0.0/25" }'
+            command: start
 
         # Network configuration with networkd
         # Note: The IP static configuration will not work because your MAC does not
@@ -45,12 +87,22 @@ coreos:
           runtime: yes
           content: |
             [Match]
-            MACAddress=00:0c:29:ca:73:49
+            MACAddress=00:00:00:00:00:01
 
             [Network]
             DNS=8.8.8.8
             Address=1.0.0.5/25
             Gateway=1.0.0.1
+
+        - name: 01-static.network
+          runtime: true
+          content: |
+            [Match]
+            MACAddress=00:00:00:00:00:02
+
+            [Network]
+            Address=172.16.0.101/24
+            DHCP=no
 
         # Open VM tools required when running in VMware image
         - name: vmtoolsd.service
@@ -70,12 +122,12 @@ coreos:
         # Cloud-config writes mount unit files beneath /etc/systemd/system. Systemd mounts filesystems
         # in such units at boot time. mount unit names derive from the target mount point. with interior 
         # slasher replaced by dashes. a unit mounting onto /var/www is thus named var-www.mount
-        #- name: media-ephemeral.mount
+        #- name: vol-data.mount
         #  command: start
         #  content: |
         #    [Mount]
         #    What=/dev/xvdb
-        #    Where=/media/ephemeral
+        #    Where=/vol/data
         #    Type=ext4
 
         # Use Attached Storage for Docker
@@ -90,3 +142,28 @@ coreos:
         #    Where=/var/lib/docker
         #    Type=ext4
 
+        # Configuring Docker to use the remote port
+        # required for CoreOS cluster
+        - name: docker-tcp.socket
+          command: start
+          enable: yes
+          content: |
+            [Unit]
+            Description=Docker Socket for the API
+
+            [Socket]
+            ListenStream=2375
+            BindIPv6Only=both
+            Service=docker.service
+
+            [Install]
+            WantedBy=sockets.target
+        - name: enable-docker-tcp.service
+          command: start
+          content: |
+            [Unit]
+            Description=Enable the Docker Socket for the API
+
+            [Service]
+            Type=oneshot
+            ExecStart=/usr/bin/systemctl enable docker-tcp.socket
