@@ -374,39 +374,39 @@ MENU COLOR timeout      1;37;40 #c0ffffff #00000000 std
 MENU COLOR msg07        37;40   #90ffffff #a0000000 std
 MENU COLOR tabmsg       31;40   #30ffffff #00000000 std
 
+EOF
+
+if [ ${action} == "INSTALL" ]; then
+
+    cat <<EOF >> "${destin}/syslinux/syslinux.cfg"
 LABEL USR-A
     MENU LABEL CoreOS USR-A
     KERNEL /coreos/vmlinuz-a
     APPEND initrd=/coreos/cpio-a.gz
     TEXT HELP
 USR-A Active / passtive Partition (Kernal and initrd) Holding CoreOS
-
-CoreOS is Linux distribution designed for security, consistency,
-and reliability.rearchitected to provide features to run modern
-infrastructure stacks.
     ENDTEXT
 
-EOF
-
-if [ ${action} == "INSTALL" ]; then
-
-    cat <<EOF >> "${destin}/syslinux/syslinux.cfg"
 LABEL USR-B
     MENU LABEL CoreOS USR-B
     KERNEL /coreos/vmlinuz-b
     APPEND initrd=/coreos/cpio-b.gz
     TEXT HELP
 USR-B Active / passtive Partition (Kernal and initrd) Holding CoreOS
-
-CoreOS is Linux distribution designed for security, consistency,
-and reliability.rearchitected to provide features to run modern
-infrastructure stacks.
     ENDTEXT
 EOF
 
 elif [ ${action} == "BUILD" ]; then
 
     cat <<EOF >> "${destin}/syslinux/syslinux.cfg"
+LABEL USR-A
+    MENU LABEL CoreOS (USR-A)
+    KERNEL /coreos/vmlinuz-a
+    APPEND initrd=/coreos/cpio-a.gz coreos.autologin
+    TEXT HELP
+USR-A Active / passtive Partition (Kernal and initrd) Holding CoreOS
+    ENDTEXT
+
 LABEL bootlocal
     MENU LABEL Boot first BIOS disk
     localboot 0x80
