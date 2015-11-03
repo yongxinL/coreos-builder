@@ -72,13 +72,6 @@ coreos:
           command: start
         - name: fleet.service
           command: start
-        - name: flanneld.service
-            drop-ins:
-            - name: 50-network-config.conf
-                content: |
-                [Service]
-                ExecStartPre=/usr/bin/etcdctl set /coreos.com/network/config '{ "Network": "1.0.0.0/25" }'
-            command: start
 
         # Network configuration with networkd
         # Note: The IP static configuration will not work because your MAC does not
