@@ -30,3 +30,15 @@ Options:
     -h                  Show myself ;-)
     -v                  Super verbose, for debugging.
 ```
+
+
+To install the CoreOS into a Hard disk,  use following steps
+
+1. Booting from CoreOS iso or USB
+2. switch to root:  sudo -i
+3. create a partition and mark as bootable for CoreOS : cfdisk -z /dev/xda
+5. format new partition with vfat :  /media/configdrive/syslinux/mkfs.vfat -n COREOS /dev/xda1
+6. install CoreOS into vfat partition : /media/configdrive/coreos-builder -i -d /dev/xda1
+7. mount configdrive: mount /dev/xda1 /mnt
+8. modify cloud-config.yml if require
+9. reboot
