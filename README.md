@@ -1,4 +1,4 @@
-# coreos-builder
+# coreos-imagebuilder
 
 This is a small utility to create CoreOS images ready to boot from a CD or a USB device. Also you can use it to install the CoreOS OS into a VFAT partition instead of standard CoreOS disk layout.
 
